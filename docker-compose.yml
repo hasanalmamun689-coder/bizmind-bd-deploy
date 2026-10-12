@@ -1,0 +1,32 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: smeuser
+      POSTGRES_PASSWORD: smepassword
+      POSTGRES_DB: sme_intelligence
+    ports: ["5432:5432"]
+    volumes: ["db-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smeuser"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://smeuser:smepassword@db:5432/sme_intelligence
+      JWT_SECRET: change-this-to-a-long-random-value
+      AI_PROVIDER: none
+      CORS_ORIGINS: http://localhost:3000
+      ENVIRONMENT: production
+    ports: ["8000:8000"]
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  db-data:
